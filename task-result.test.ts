@@ -45,6 +45,28 @@ describe("formatTaskResultPanel", () => {
     ]);
   });
 
+  test("formats spilled output as a preview or expanded artifact", () => {
+    const content = [
+      '<task-result id="LargeTask" agent="task" status="completed">',
+      '<meta lines="80" size="19.7KB" />',
+      '<preview full-output="agent://LargeTask">{</preview>',
+      "</task-result>",
+    ].join("\n");
+
+    expect(formatTaskResultPanel(content)).toEqual({
+      id: "LargeTask",
+      metadata: ["task", "completed", "19.7KB"],
+      blocks: [{ description: "Full output is collapsed." }],
+      hasFullOutput: true,
+    });
+    expect(
+      formatTaskResultPanel(
+        content,
+        JSON.stringify({ text: "Full output paragraph." }),
+      )?.blocks,
+    ).toEqual([{ description: "Full output paragraph." }]);
+  });
+
   test("rejects content without a task-result envelope", () => {
     expect(formatTaskResultPanel("ordinary message")).toBeUndefined();
   });

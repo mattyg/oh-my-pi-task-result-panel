@@ -1,4 +1,7 @@
-import { describe, expect, test } from "bun:test";
+import { afterEach, describe, expect, test } from "bun:test";
+import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import taskResultPanel from "./index";
 
 interface RenderedComponent {
@@ -6,7 +9,7 @@ interface RenderedComponent {
 }
 
 type Renderer = (
-  message: { content: string },
+  message: { content: string; details?: unknown },
   options: { expanded: boolean },
   theme: {
     fg(color: string, text: string): string;
@@ -17,7 +20,10 @@ type Renderer = (
 type SessionStart = (
   event: unknown,
   context: {
-    sessionManager: { getBranch(): unknown[] };
+    sessionManager: {
+      getBranch(): unknown[];
+      getSessionFile(): string | undefined;
+    };
     setInterval(callback: () => void): void;
   },
 ) => Promise<void>;
@@ -27,7 +33,16 @@ interface SentMessage {
   content: string;
   role?: "custom";
   timestamp?: number;
+  details?: unknown;
 }
+
+const temporaryRoots: string[] = [];
+
+afterEach(async () => {
+  await Promise.all(
+    temporaryRoots.splice(0).map((path) => rm(path, { recursive: true })),
+  );
+});
 
 describe("task result extension", () => {
   test("only mirrors results that arrive after session startup", async () => {
@@ -35,6 +50,17 @@ describe("task result extension", () => {
     let render: Renderer | undefined;
     let start: SessionStart | undefined;
     const sent: SentMessage[] = [];
+    const temporaryRoot = await mkdtemp(
+      join(tmpdir(), "omp-task-result-panel-"),
+    );
+    temporaryRoots.push(temporaryRoot);
+    const sessionFile = join(temporaryRoot, "session.jsonl");
+    const artifactDirectory = join(temporaryRoot, "session");
+    await mkdir(artifactDirectory);
+    await writeFile(
+      join(artifactDirectory, "LargeTask.md"),
+      JSON.stringify({ text: "Full output paragraph." }),
+    );
     const entries: unknown[] = [
       {
         id: "historical-entry",
@@ -61,7 +87,10 @@ describe("task result extension", () => {
     } as never);
 
     await start?.({}, {
-      sessionManager: { getBranch: () => entries },
+      sessionManager: {
+        getBranch: () => entries,
+        getSessionFile: () => sessionFile,
+      },
       // Capture OMP's managed interval so the test drives it synchronously.
       setInterval(callback: () => void) {
         poll = callback;
@@ -117,5 +146,43 @@ describe("task result extension", () => {
       "Second description.\n\n━━━━━━━━━━━━━━━━━━━━━━━━━━",
     );
     expect(output).not.toContain("•");
+
+    entries.push({
+      id: "large-entry",
+      type: "custom_message",
+      customType: "async-result",
+      content: [
+        '<task-result id="LargeTask" agent="task" status="completed">',
+        '<meta lines="80" size="19.7KB" />',
+        '<preview full-output="agent://LargeTask">Short preview.</preview>',
+        "</task-result>",
+      ].join("\n"),
+    });
+    poll?.();
+
+    expect(sent).toHaveLength(2);
+    const collapsed = render?.(
+      { ...sent[1], role: "custom", timestamp: Date.now() },
+      { expanded: false },
+      {
+        fg: (_color: string, text: string) => text,
+        bold: (text: string) => `<b>${text}</b>`,
+      },
+    );
+    const expanded = render?.(
+      { ...sent[1], role: "custom", timestamp: Date.now() },
+      { expanded: true },
+      {
+        fg: (_color: string, text: string) => text,
+        bold: (text: string) => `<b>${text}</b>`,
+      },
+    );
+    const collapsedOutput = collapsed?.render(120).join("\n");
+    const expandedOutput = expanded?.render(120).join("\n");
+
+    expect(collapsedOutput).toContain("Short preview.");
+    expect(collapsedOutput).toContain("Ctrl+O to expand");
+    expect(collapsedOutput).not.toContain("Full output paragraph.");
+    expect(expandedOutput).toContain("Full output paragraph.");
   });
 });

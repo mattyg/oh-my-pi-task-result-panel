@@ -1,10 +1,13 @@
 /** Renders completed OMP tasks as readable transcript panels. */
+import { readFileSync, statSync } from "node:fs";
 import type { ExtensionAPI } from "@oh-my-pi/pi-coding-agent";
 import { Container, Spacer, Text } from "@oh-my-pi/pi-tui";
+import { resolveTaskArtifactPath } from "./task-artifact";
 import { formatTaskResultPanel } from "./task-result";
 
 const TASK_RESULT_TAG = "<task-result";
 const PANEL_MESSAGE_TYPE = "task-result-panel";
+const MAX_EXPANDED_OUTPUT_BYTES = 8 * 1024 * 1024;
 
 /** Minimal session entry shape used by the result watcher. */
 interface SessionEntry {
@@ -14,45 +17,67 @@ interface SessionEntry {
   content?: unknown;
 }
 
+interface PanelDetails {
+  fullOutputPath?: string;
+}
+
 /** Registers automatic task-result watching and panel rendering. */
 export default function taskResultPanel(pi: ExtensionAPI) {
-  pi.registerMessageRenderer(PANEL_MESSAGE_TYPE, (message, _options, theme) => {
-    const content =
-      typeof message.content === "string" ? message.content : "";
-    const result = formatTaskResultPanel(content);
-    if (!result) return;
+  pi.registerMessageRenderer<PanelDetails>(
+    PANEL_MESSAGE_TYPE,
+    (message, options, theme) => {
+      const content =
+        typeof message.content === "string" ? message.content : "";
+      const fullOutput = options.expanded
+        ? readTaskOutput(message.details?.fullOutputPath)
+        : undefined;
+      const result = formatTaskResultPanel(content, fullOutput);
+      if (!result) return;
 
-    const panel = new Container();
-    panel.addChild(
-      new Text(theme.fg("accent", "━━━━━━━━━━━━━━━━━━━━━━━━━━"), 1, 0),
-    );
-    panel.addChild(new Spacer(1));
-    panel.addChild(
-      new Text(
-        theme.bold(theme.fg("accent", `Task result · ${result.id}`)),
-        1,
-        0,
-      ),
-    );
-    panel.addChild(
-      new Text(theme.fg("dim", result.metadata.join(" · ")), 1, 0),
-    );
-    panel.addChild(new Spacer(1));
-    result.blocks.forEach((block, index) => {
-      if (index > 0) panel.addChild(new Spacer(1));
-      if (block.title) {
-        panel.addChild(new Text(theme.bold(block.title), 1, 0));
+      const panel = new Container();
+      panel.addChild(
+        new Text(theme.fg("accent", "━━━━━━━━━━━━━━━━━━━━━━━━━━"), 1, 0),
+      );
+      panel.addChild(new Spacer(1));
+      panel.addChild(
+        new Text(
+          theme.bold(theme.fg("accent", `Task result · ${result.id}`)),
+          1,
+          0,
+        ),
+      );
+      panel.addChild(
+        new Text(theme.fg("dim", result.metadata.join(" · ")), 1, 0),
+      );
+      panel.addChild(new Spacer(1));
+      result.blocks.forEach((block, index) => {
+        if (index > 0) panel.addChild(new Spacer(1));
+        if (block.title) {
+          panel.addChild(new Text(theme.bold(block.title), 1, 0));
+        }
+        if (block.description) {
+          panel.addChild(new Text(block.description, 1, 0));
+        }
+      });
+      if (result.hasFullOutput && !options.expanded) {
+        panel.addChild(new Spacer(1));
+        panel.addChild(
+          new Text(theme.fg("dim", "Ctrl+O to expand full output"), 1, 0),
+        );
       }
-      if (block.description) {
-        panel.addChild(new Text(block.description, 1, 0));
+      if (result.hasFullOutput && options.expanded && fullOutput === undefined) {
+        panel.addChild(new Spacer(1));
+        panel.addChild(
+          new Text(theme.fg("dim", "Full output is unavailable"), 1, 0),
+        );
       }
-    });
-    panel.addChild(new Spacer(1));
-    panel.addChild(
-      new Text(theme.fg("accent", "━━━━━━━━━━━━━━━━━━━━━━━━━━"), 1, 0),
-    );
-    return panel;
-  });
+      panel.addChild(new Spacer(1));
+      panel.addChild(
+        new Text(theme.fg("accent", "━━━━━━━━━━━━━━━━━━━━━━━━━━"), 1, 0),
+      );
+      return panel;
+    },
+  );
 
   // OMP owns the async-result renderer, so mirror new results to our type.
   pi.on("session_start", async (_event, ctx) => {
@@ -67,12 +92,17 @@ export default function taskResultPanel(pi: ExtensionAPI) {
       for (const entry of entries) {
         if (!isNewTaskResult(entry, seenEntryIds)) continue;
         seenEntryIds.add(entry.id);
+        const fullOutputPath = resolveTaskArtifactPath(
+          entry.content,
+          ctx.sessionManager.getSessionFile(),
+        );
         pi.sendMessage(
           {
             customType: PANEL_MESSAGE_TYPE,
             content: entry.content,
             display: true,
             attribution: "agent",
+            ...(fullOutputPath ? { details: { fullOutputPath } } : {}),
           },
           { triggerTurn: false },
         );
@@ -101,4 +131,16 @@ function isNewTaskResult(
   seenEntryIds: Set<string>,
 ): entry is TaskResultEntry {
   return isTaskResultEntry(entry) && !seenEntryIds.has(entry.id);
+}
+
+/** Reads a bounded task artifact only when the panel is expanded. */
+function readTaskOutput(path: string | undefined): string | undefined {
+  if (!path) return;
+
+  try {
+    if (statSync(path).size > MAX_EXPANDED_OUTPUT_BYTES) return;
+    return readFileSync(path, "utf8");
+  } catch {
+    return;
+  }
 }
