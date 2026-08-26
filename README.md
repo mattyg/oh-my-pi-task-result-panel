@@ -1,6 +1,6 @@
 # OMP Task Result Panel
 
-Shows results from any OMP `task` run as clean panels in the main transcript instead of raw XML.
+Displays results from any OMP `task` run as clean panels in the main transcript.
 
 ![OMP task result panel](assets/demo.svg)
 
