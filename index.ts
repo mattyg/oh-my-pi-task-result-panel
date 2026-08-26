@@ -24,8 +24,12 @@ export default function taskResultPanel(pi: ExtensionAPI) {
 
     const panel = new Container();
     panel.addChild(
+      new Text(theme.fg("accent", "━━━━━━━━━━━━━━━━━━━━━━━━━━"), 1, 0),
+    );
+    panel.addChild(new Text("", 1, 0));
+    panel.addChild(
       new Text(
-        theme.fg("accent", `━━━ Task result · ${result.id} ━━━`),
+        theme.bold(theme.fg("accent", `Task result · ${result.id}`)),
         1,
         0,
       ),
@@ -33,9 +37,17 @@ export default function taskResultPanel(pi: ExtensionAPI) {
     panel.addChild(
       new Text(theme.fg("dim", result.metadata.join(" · ")), 1, 0),
     );
-    for (const section of result.lines) {
-      panel.addChild(new Text(section, 1, 0));
-    }
+    panel.addChild(new Text("", 1, 0));
+    result.blocks.forEach((block, index) => {
+      if (index > 0) panel.addChild(new Text("", 1, 0));
+      if (block.title) {
+        panel.addChild(new Text(theme.bold(block.title), 1, 0));
+      }
+      if (block.description) {
+        panel.addChild(new Text(block.description, 1, 0));
+      }
+    });
+    panel.addChild(new Text("", 1, 0));
     panel.addChild(
       new Text(theme.fg("accent", "━━━━━━━━━━━━━━━━━━━━━━━━━━"), 1, 0),
     );

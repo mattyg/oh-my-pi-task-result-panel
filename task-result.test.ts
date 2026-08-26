@@ -15,24 +15,33 @@ describe("formatTaskResultPanel", () => {
     expect(formatTaskResultPanel(content)).toEqual({
       id: "DataMigration",
       metadata: ["task", "completed", "42s"],
-      lines: ["Migrated 24 records."],
+      blocks: [{ description: "Migrated 24 records." }],
     });
   });
 
-  test("formats structured findings as readable lines", () => {
+  test("keeps multiple structured results as separate title-description blocks", () => {
     const content = [
       '<task-result id="Audit" agent="task" status="completed">',
       "<output>",
       JSON.stringify({
-        findings: [{ title: "Missing retry", body: "Retry the transient request." }],
+        findings: [
+          { title: "Missing retry", body: "Retry the transient request." },
+          { title: "Missing timeout", body: "Bound the request duration." },
+        ],
       }),
       "</output>",
       "</task-result>",
     ].join("\n");
 
-    expect(formatTaskResultPanel(content)?.lines).toEqual([
-      "• Missing retry",
-      "Retry the transient request.",
+    expect(formatTaskResultPanel(content)?.blocks).toEqual([
+      {
+        title: "Missing retry",
+        description: "Retry the transient request.",
+      },
+      {
+        title: "Missing timeout",
+        description: "Bound the request duration.",
+      },
     ]);
   });
 

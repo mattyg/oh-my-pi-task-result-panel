@@ -1,13 +1,16 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="1000" height="280" viewBox="0 0 1000 280">
-  <rect width="1000" height="280" rx="12" fill="#101418"/>
+<svg xmlns="http://www.w3.org/2000/svg" width="1000" height="430" viewBox="0 0 1000 430">
+  <rect width="1000" height="430" rx="12" fill="#101418"/>
   <circle cx="28" cy="25" r="6" fill="#ff5f57"/>
   <circle cx="48" cy="25" r="6" fill="#febc2e"/>
   <circle cx="68" cy="25" r="6" fill="#28c840"/>
   <g font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="19">
-    <text x="28" y="72" fill="#7dd3fc">━━━ Task result · DataMigration ━━━</text>
-    <text x="28" y="106" fill="#94a3b8">task · completed · 42s</text>
-    <text x="28" y="150" fill="#e2e8f0">Migrated 24 records.</text>
-    <text x="28" y="184" fill="#cbd5e1">Validation completed successfully.</text>
-    <text x="28" y="230" fill="#7dd3fc">━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━</text>
+    <text x="28" y="72" fill="#7dd3fc">━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━</text>
+    <text x="28" y="124" fill="#7dd3fc" font-weight="700">Task result · DataMigration</text>
+    <text x="28" y="158" fill="#94a3b8">task · completed · 42s</text>
+    <text x="28" y="214" fill="#e2e8f0" font-weight="700">Records migrated</text>
+    <text x="28" y="248" fill="#cbd5e1">Migrated 24 records successfully.</text>
+    <text x="28" y="304" fill="#e2e8f0" font-weight="700">Validation complete</text>
+    <text x="28" y="338" fill="#cbd5e1">All destination records passed validation.</text>
+    <text x="28" y="398" fill="#7dd3fc">━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━</text>
   </g>
 </svg>

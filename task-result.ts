@@ -1,8 +1,14 @@
+/** One titled or untitled section of task output. */
+export interface TaskResultBlock {
+  title?: string;
+  description: string;
+}
+
 /** Display data for one completed OMP task. */
 export interface TaskResultPanel {
   id: string;
   metadata: string[];
-  lines: string[];
+  blocks: TaskResultBlock[];
 }
 
 interface StructuredFinding {
@@ -33,22 +39,20 @@ export function formatTaskResultPanel(
     metadata: [attributes.agent, attributes.status, attributes.duration].filter(
       (value): value is string => Boolean(value),
     ),
-    lines: formatOutput(outputText),
+    blocks: formatOutput(outputText),
   };
 }
 
-/** Formats structured findings and preserves every other task output. */
-function formatOutput(output: string): string[] {
+/** Groups structured findings and preserves every other task output. */
+function formatOutput(output: string): TaskResultBlock[] {
   const findings = parseFindings(output);
-  if (!findings) return [output];
-  if (findings.length === 0) return ["No findings."];
+  if (!findings) return [{ description: output }];
+  if (findings.length === 0) return [{ description: "No findings." }];
 
-  return findings.flatMap((finding) => {
-    const title =
-      typeof finding.title === "string" ? `• ${finding.title}` : "• Finding";
-    const body = typeof finding.body === "string" ? finding.body : "";
-    return body ? [title, body] : [title];
-  });
+  return findings.map((finding) => ({
+    title: typeof finding.title === "string" ? finding.title : "Finding",
+    description: typeof finding.body === "string" ? finding.body : "",
+  }));
 }
 
 /** Reads the optional structured-findings output shape. */
