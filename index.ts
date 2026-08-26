@@ -1,6 +1,9 @@
 /** Renders completed OMP tasks as readable transcript panels. */
 import { readFileSync, statSync } from "node:fs";
-import type { ExtensionAPI } from "@oh-my-pi/pi-coding-agent";
+import type {
+  ExtensionAPI,
+  ExtensionContext,
+} from "@oh-my-pi/pi-coding-agent";
 import { Container, Spacer, Text } from "@oh-my-pi/pi-tui";
 import { resolveTaskArtifactPath } from "./task-artifact";
 import { formatTaskResultPanel } from "./task-result";
@@ -66,7 +69,11 @@ export default function taskResultPanel(pi: ExtensionAPI) {
       if (result.hasFullOutput && !options.expanded) {
         panel.addChild(new Spacer(1));
         panel.addChild(
-          new Text(theme.fg("dim", "Ctrl+O to expand full output"), 1, 0),
+          new Text(
+            theme.fg("dim", "Ctrl+O or Alt+O to expand full output"),
+            1,
+            0,
+          ),
         );
       }
       if (result.hasFullOutput && options.expanded && fullOutput === undefined) {
@@ -82,6 +89,15 @@ export default function taskResultPanel(pi: ExtensionAPI) {
       return panel;
     },
   );
+
+  pi.registerCommand("task-results-toggle", {
+    description: "Expand or collapse task result panels",
+    handler: (_args, ctx) => toggleTaskResults(ctx),
+  });
+  pi.registerShortcut("alt+o", {
+    description: "Expand or collapse task result panels",
+    handler: toggleTaskResults,
+  });
 
   // OMP owns the async-result renderer, so mirror new results to our type.
   pi.on("session_start", async (_event, ctx) => {
@@ -148,4 +164,9 @@ function readTaskOutput(path: string | undefined): string | undefined {
   } catch {
     return;
   }
+}
+
+/** Toggles the OMP expansion state used by task result renderers. */
+function toggleTaskResults(ctx: ExtensionContext): void {
+  ctx.ui.setToolsExpanded(!ctx.ui.getToolsExpanded());
 }

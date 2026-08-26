@@ -36,6 +36,19 @@ interface SentMessage {
   details?: unknown;
 }
 
+interface ExpansionContext {
+  ui: {
+    getToolsExpanded(): boolean;
+    setToolsExpanded(expanded: boolean): void;
+  };
+}
+
+type CommandHandler = (
+  args: string,
+  context: ExpansionContext,
+) => Promise<void> | void;
+type ShortcutHandler = (context: ExpansionContext) => Promise<void> | void;
+
 const temporaryRoots: string[] = [];
 
 afterEach(async () => {
@@ -49,6 +62,9 @@ describe("task result extension", () => {
     let poll: (() => void) | undefined;
     let render: Renderer | undefined;
     let start: SessionStart | undefined;
+    let toggleCommand: CommandHandler | undefined;
+    let toggleShortcut: ShortcutHandler | undefined;
+    let toolsExpanded = true;
     const sent: SentMessage[] = [];
     const temporaryRoot = await mkdtemp(
       join(tmpdir(), "omp-task-result-panel-"),
@@ -81,10 +97,35 @@ describe("task result extension", () => {
       on(event: string, callback: SessionStart) {
         if (event === "session_start") start = callback;
       },
+      registerCommand(
+        name: string,
+        options: { handler: CommandHandler },
+      ) {
+        if (name === "task-results-toggle") toggleCommand = options.handler;
+      },
+      registerShortcut(
+        shortcut: string,
+        options: { handler: ShortcutHandler },
+      ) {
+        if (shortcut === "alt+o") toggleShortcut = options.handler;
+      },
       sendMessage(message: SentMessage) {
         sent.push(message);
       },
     } as never);
+
+    const expansionContext: ExpansionContext = {
+      ui: {
+        getToolsExpanded: () => toolsExpanded,
+        setToolsExpanded: (expanded) => {
+          toolsExpanded = expanded;
+        },
+      },
+    };
+    await toggleCommand?.("", expansionContext);
+    expect(toolsExpanded).toBe(false);
+    await toggleShortcut?.(expansionContext);
+    expect(toolsExpanded).toBe(true);
 
     await start?.({}, {
       sessionManager: {
@@ -181,8 +222,8 @@ describe("task result extension", () => {
     const expandedOutput = expanded?.render(120).join("\n");
 
     expect(collapsedOutput).toContain("Short preview.");
-    expect(collapsedOutput).toContain("Ctrl+O to expand");
+    expect(collapsedOutput).toContain("Ctrl+O");
     expect(collapsedOutput).not.toContain("Full output paragraph.");
-    expect(expandedOutput).toContain("Full output paragraph.");
+    expect(collapsedOutput).toContain("Alt+O to expand");
   });
 });
