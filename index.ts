@@ -23,13 +23,17 @@ interface PanelDetails {
 
 /** Registers automatic task-result watching and panel rendering. */
 export default function taskResultPanel(pi: ExtensionAPI) {
+  let sessionFile: string | undefined;
   pi.registerMessageRenderer<PanelDetails>(
     PANEL_MESSAGE_TYPE,
     (message, options, theme) => {
       const content =
         typeof message.content === "string" ? message.content : "";
+      const fullOutputPath =
+        message.details?.fullOutputPath ??
+        resolveTaskArtifactPath(content, sessionFile);
       const fullOutput = options.expanded
-        ? readTaskOutput(message.details?.fullOutputPath)
+        ? readTaskOutput(fullOutputPath)
         : undefined;
       const result = formatTaskResultPanel(content, fullOutput);
       if (!result) return;
@@ -81,6 +85,7 @@ export default function taskResultPanel(pi: ExtensionAPI) {
 
   // OMP owns the async-result renderer, so mirror new results to our type.
   pi.on("session_start", async (_event, ctx) => {
+    sessionFile = ctx.sessionManager.getSessionFile();
     const seenEntryIds = new Set<string>();
     const existingEntries = ctx.sessionManager.getBranch() as SessionEntry[];
     for (const entry of existingEntries) {
@@ -94,7 +99,7 @@ export default function taskResultPanel(pi: ExtensionAPI) {
         seenEntryIds.add(entry.id);
         const fullOutputPath = resolveTaskArtifactPath(
           entry.content,
-          ctx.sessionManager.getSessionFile(),
+          sessionFile,
         );
         pi.sendMessage(
           {

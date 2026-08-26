@@ -162,7 +162,7 @@ describe("task result extension", () => {
 
     expect(sent).toHaveLength(2);
     const collapsed = render?.(
-      { ...sent[1], role: "custom", timestamp: Date.now() },
+      { content: sent[1].content },
       { expanded: false },
       {
         fg: (_color: string, text: string) => text,
@@ -170,7 +170,7 @@ describe("task result extension", () => {
       },
     );
     const expanded = render?.(
-      { ...sent[1], role: "custom", timestamp: Date.now() },
+      { content: sent[1].content },
       { expanded: true },
       {
         fg: (_color: string, text: string) => text,
