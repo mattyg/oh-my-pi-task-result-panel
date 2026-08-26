@@ -4,7 +4,9 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "test": "bun test"
+    "test": "bun test",
+    "test:unit": "bun test task-result.test.ts",
+    "test:integration": "bun test index.integration.test.ts"
   },
   "description": "Prominently renders OMP task subagent results in the main transcript.",
   "keywords": [
@@ -16,6 +18,10 @@
     "extensions": [
       "./index.ts"
     ]
+  },
+  "devDependencies": {
+    "@oh-my-pi/pi-coding-agent": "18.0.1",
+    "@oh-my-pi/pi-tui": "18.0.1"
   },
   "peerDependencies": {
     "@oh-my-pi/pi-coding-agent": ">=18.0.0",

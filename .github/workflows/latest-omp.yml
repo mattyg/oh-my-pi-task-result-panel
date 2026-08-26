@@ -1,0 +1,24 @@
+name: Latest OMP compatibility
+
+on:
+  schedule:
+    - cron: "17 9 * * 1"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  compatibility:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - uses: oven-sh/setup-bun@v2
+      - run: npm ci --ignore-scripts
+      - name: Install latest OMP packages
+        run: npm install --no-save --ignore-scripts @oh-my-pi/pi-coding-agent@latest @oh-my-pi/pi-tui@latest
+      - run: bun test index.integration.test.ts

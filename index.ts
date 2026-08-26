@@ -1,6 +1,6 @@
 /** Renders completed OMP tasks as readable transcript panels. */
 import type { ExtensionAPI } from "@oh-my-pi/pi-coding-agent";
-import { Container, Text } from "@oh-my-pi/pi-tui";
+import { Container, Spacer, Text } from "@oh-my-pi/pi-tui";
 import { formatTaskResultPanel } from "./task-result";
 
 const TASK_RESULT_TAG = "<task-result";
@@ -26,7 +26,7 @@ export default function taskResultPanel(pi: ExtensionAPI) {
     panel.addChild(
       new Text(theme.fg("accent", "━━━━━━━━━━━━━━━━━━━━━━━━━━"), 1, 0),
     );
-    panel.addChild(new Text("", 1, 0));
+    panel.addChild(new Spacer(1));
     panel.addChild(
       new Text(
         theme.bold(theme.fg("accent", `Task result · ${result.id}`)),
@@ -37,9 +37,9 @@ export default function taskResultPanel(pi: ExtensionAPI) {
     panel.addChild(
       new Text(theme.fg("dim", result.metadata.join(" · ")), 1, 0),
     );
-    panel.addChild(new Text("", 1, 0));
+    panel.addChild(new Spacer(1));
     result.blocks.forEach((block, index) => {
-      if (index > 0) panel.addChild(new Text("", 1, 0));
+      if (index > 0) panel.addChild(new Spacer(1));
       if (block.title) {
         panel.addChild(new Text(theme.bold(block.title), 1, 0));
       }
@@ -47,7 +47,7 @@ export default function taskResultPanel(pi: ExtensionAPI) {
         panel.addChild(new Text(block.description, 1, 0));
       }
     });
-    panel.addChild(new Text("", 1, 0));
+    panel.addChild(new Spacer(1));
     panel.addChild(
       new Text(theme.fg("accent", "━━━━━━━━━━━━━━━━━━━━━━━━━━"), 1, 0),
     );
