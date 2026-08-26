@@ -6,7 +6,10 @@ import type {
 } from "@oh-my-pi/pi-coding-agent";
 import { Container, Spacer, Text } from "@oh-my-pi/pi-tui";
 import { resolveTaskArtifactPath } from "./task-artifact";
-import { formatTaskResultPanel } from "./task-result";
+import {
+  extractTaskArtifactText,
+  formatTaskResultPanel,
+} from "./task-result";
 
 const TASK_RESULT_TAG = "<task-result";
 const PANEL_MESSAGE_TYPE = "task-result-panel";
@@ -20,25 +23,15 @@ interface SessionEntry {
   content?: unknown;
 }
 
-interface PanelDetails {
-  fullOutputPath?: string;
-}
 
 /** Registers automatic task-result watching and panel rendering. */
 export default function taskResultPanel(pi: ExtensionAPI) {
-  let sessionFile: string | undefined;
-  pi.registerMessageRenderer<PanelDetails>(
+  pi.registerMessageRenderer(
     PANEL_MESSAGE_TYPE,
-    (message, options, theme) => {
+    (message, _options, theme) => {
       const content =
         typeof message.content === "string" ? message.content : "";
-      const fullOutputPath =
-        message.details?.fullOutputPath ??
-        resolveTaskArtifactPath(content, sessionFile);
-      const fullOutput = options.expanded
-        ? readTaskOutput(fullOutputPath)
-        : undefined;
-      const result = formatTaskResultPanel(content, fullOutput);
+      const result = formatTaskResultPanel(content);
       if (!result) return;
 
       const panel = new Container();
@@ -66,20 +59,17 @@ export default function taskResultPanel(pi: ExtensionAPI) {
           panel.addChild(new Text(block.description, 1, 0));
         }
       });
-      if (result.hasFullOutput && !options.expanded) {
+      if (result.hasFullOutput) {
         panel.addChild(new Spacer(1));
         panel.addChild(
           new Text(
-            theme.fg("dim", "Ctrl+O or Alt+O to expand full output"),
+            theme.fg(
+              "dim",
+              `/task-results-view ${result.id} opens the full output`,
+            ),
             1,
             0,
           ),
-        );
-      }
-      if (result.hasFullOutput && options.expanded && fullOutput === undefined) {
-        panel.addChild(new Spacer(1));
-        panel.addChild(
-          new Text(theme.fg("dim", "Full output is unavailable"), 1, 0),
         );
       }
       panel.addChild(new Spacer(1));
@@ -90,18 +80,13 @@ export default function taskResultPanel(pi: ExtensionAPI) {
     },
   );
 
-  pi.registerCommand("task-results-toggle", {
-    description: "Expand or collapse task result panels",
-    handler: (_args, ctx) => toggleTaskResults(ctx),
-  });
-  pi.registerShortcut("alt+o", {
-    description: "Expand or collapse task result panels",
-    handler: toggleTaskResults,
+  pi.registerCommand("task-results-view", {
+    description: "Open the full output for a task result",
+    handler: viewTaskResult,
   });
 
   // OMP owns the async-result renderer, so mirror new results to our type.
   pi.on("session_start", async (_event, ctx) => {
-    sessionFile = ctx.sessionManager.getSessionFile();
     const seenEntryIds = new Set<string>();
     const existingEntries = ctx.sessionManager.getBranch() as SessionEntry[];
     for (const entry of existingEntries) {
@@ -113,17 +98,12 @@ export default function taskResultPanel(pi: ExtensionAPI) {
       for (const entry of entries) {
         if (!isNewTaskResult(entry, seenEntryIds)) continue;
         seenEntryIds.add(entry.id);
-        const fullOutputPath = resolveTaskArtifactPath(
-          entry.content,
-          sessionFile,
-        );
         pi.sendMessage(
           {
             customType: PANEL_MESSAGE_TYPE,
             content: entry.content,
             display: true,
             attribution: "agent",
-            ...(fullOutputPath ? { details: { fullOutputPath } } : {}),
           },
           { triggerTurn: false },
         );
@@ -154,7 +134,7 @@ function isNewTaskResult(
   return isTaskResultEntry(entry) && !seenEntryIds.has(entry.id);
 }
 
-/** Reads a bounded task artifact only when the panel is expanded. */
+/** Reads a bounded task artifact for the focused viewer. */
 function readTaskOutput(path: string | undefined): string | undefined {
   if (!path) return;
 
@@ -166,7 +146,48 @@ function readTaskOutput(path: string | undefined): string | undefined {
   }
 }
 
-/** Toggles the OMP expansion state used by task result renderers. */
-function toggleTaskResults(ctx: ExtensionContext): void {
-  ctx.ui.setToolsExpanded(!ctx.ui.getToolsExpanded());
+/** Opens the requested task artifact, or the latest one when omitted. */
+async function viewTaskResult(
+  taskId: string,
+  ctx: ExtensionContext,
+): Promise<void> {
+  const result = findTaskResult(
+    ctx.sessionManager.getBranch() as SessionEntry[],
+    taskId.trim(),
+  );
+  if (!result) {
+    ctx.ui.notify("No task result with full output was found", "warning");
+    return;
+  }
+
+  const artifactPath = resolveTaskArtifactPath(
+    result.content,
+    ctx.sessionManager.getSessionFile(),
+  );
+  const output = readTaskOutput(artifactPath);
+  if (output === undefined) {
+    ctx.ui.notify("The full task output is unavailable", "warning");
+    return;
+  }
+
+  await ctx.ui.editor(
+    `Task result · ${result.id}`,
+    extractTaskArtifactText(output),
+  );
+}
+
+/** Finds a spilled task result by id, preferring the latest match. */
+function findTaskResult(
+  entries: SessionEntry[],
+  taskId: string,
+): { id: string; content: string } | undefined {
+  for (let index = entries.length - 1; index >= 0; index -= 1) {
+    const entry = entries[index];
+    if (typeof entry.content !== "string") continue;
+    const result = formatTaskResultPanel(entry.content);
+    if (!result?.hasFullOutput) continue;
+    if (taskId && result.id !== taskId) continue;
+    return { id: result.id, content: entry.content };
+  }
+  return;
 }

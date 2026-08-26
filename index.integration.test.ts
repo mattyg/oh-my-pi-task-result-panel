@@ -36,18 +36,21 @@ interface SentMessage {
   details?: unknown;
 }
 
-interface ExpansionContext {
+interface ViewerContext {
+  sessionManager: {
+    getBranch(): unknown[];
+    getSessionFile(): string | undefined;
+  };
   ui: {
-    getToolsExpanded(): boolean;
-    setToolsExpanded(expanded: boolean): void;
+    editor(title: string, content: string): Promise<string | undefined>;
+    notify(message: string, type?: "info" | "warning" | "error"): void;
   };
 }
 
 type CommandHandler = (
   args: string,
-  context: ExpansionContext,
+  context: ViewerContext,
 ) => Promise<void> | void;
-type ShortcutHandler = (context: ExpansionContext) => Promise<void> | void;
 
 const temporaryRoots: string[] = [];
 
@@ -62,9 +65,9 @@ describe("task result extension", () => {
     let poll: (() => void) | undefined;
     let render: Renderer | undefined;
     let start: SessionStart | undefined;
-    let toggleCommand: CommandHandler | undefined;
-    let toggleShortcut: ShortcutHandler | undefined;
-    let toolsExpanded = true;
+    let viewCommand: CommandHandler | undefined;
+    let viewedTitle: string | undefined;
+    let viewedContent: string | undefined;
     const sent: SentMessage[] = [];
     const temporaryRoot = await mkdtemp(
       join(tmpdir(), "omp-task-result-panel-"),
@@ -101,31 +104,13 @@ describe("task result extension", () => {
         name: string,
         options: { handler: CommandHandler },
       ) {
-        if (name === "task-results-toggle") toggleCommand = options.handler;
-      },
-      registerShortcut(
-        shortcut: string,
-        options: { handler: ShortcutHandler },
-      ) {
-        if (shortcut === "alt+o") toggleShortcut = options.handler;
+        if (name === "task-results-view") viewCommand = options.handler;
       },
       sendMessage(message: SentMessage) {
         sent.push(message);
       },
     } as never);
 
-    const expansionContext: ExpansionContext = {
-      ui: {
-        getToolsExpanded: () => toolsExpanded,
-        setToolsExpanded: (expanded) => {
-          toolsExpanded = expanded;
-        },
-      },
-    };
-    await toggleCommand?.("", expansionContext);
-    expect(toolsExpanded).toBe(false);
-    await toggleShortcut?.(expansionContext);
-    expect(toolsExpanded).toBe(true);
 
     await start?.({}, {
       sessionManager: {
@@ -204,14 +189,6 @@ describe("task result extension", () => {
     expect(sent).toHaveLength(2);
     const collapsed = render?.(
       { content: sent[1].content },
-      { expanded: false },
-      {
-        fg: (_color: string, text: string) => text,
-        bold: (text: string) => `<b>${text}</b>`,
-      },
-    );
-    const expanded = render?.(
-      { content: sent[1].content },
       { expanded: true },
       {
         fg: (_color: string, text: string) => text,
@@ -219,11 +196,27 @@ describe("task result extension", () => {
       },
     );
     const collapsedOutput = collapsed?.render(120).join("\n");
-    const expandedOutput = expanded?.render(120).join("\n");
 
     expect(collapsedOutput).toContain("Short preview.");
-    expect(collapsedOutput).toContain("Ctrl+O");
+    expect(collapsedOutput).toContain("/task-results-view LargeTask");
     expect(collapsedOutput).not.toContain("Full output paragraph.");
-    expect(collapsedOutput).toContain("Alt+O to expand");
+
+    await viewCommand?.("LargeTask", {
+      sessionManager: {
+        getBranch: () => entries,
+        getSessionFile: () => sessionFile,
+      },
+      ui: {
+        editor: async (title, content) => {
+          viewedTitle = title;
+          viewedContent = content;
+          return;
+        },
+        notify: () => {},
+      },
+    });
+
+    expect(viewedTitle).toBe("Task result · LargeTask");
+    expect(viewedContent).toBe("Full output paragraph.");
   });
 });

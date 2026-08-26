@@ -97,3 +97,11 @@ function parseStructuredOutput(
     return;
   }
 }
+
+/** Unwraps OMP's JSON text artifact while preserving plain task output. */
+export function extractTaskArtifactText(output: string): string {
+  const structured = parseStructuredOutput(output);
+  return structured && typeof structured.text === "string"
+    ? structured.text
+    : output;
+}
