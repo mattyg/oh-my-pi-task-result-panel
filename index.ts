@@ -1,9 +1,11 @@
+/** Renders completed OMP reviewer tasks as readable transcript panels. */
 import type { ExtensionAPI } from "@oh-my-pi/pi-coding-agent";
 import { Container, Text } from "@oh-my-pi/pi-tui";
 
 const TASK_RESULT_TAG = "<task-result";
 const PANEL_MESSAGE_TYPE = "task-result-panel";
 
+/** Minimal session entry shape used by the result watcher. */
 interface SessionEntry {
   id?: string;
   type: string;
@@ -11,6 +13,7 @@ interface SessionEntry {
   content?: unknown;
 }
 
+/** Registers result watching, panel rendering, and the demo command. */
 export default function taskResultPanel(pi: ExtensionAPI) {
   pi.registerMessageRenderer(PANEL_MESSAGE_TYPE, (message, _options, theme) => {
     const content =
@@ -47,6 +50,7 @@ export default function taskResultPanel(pi: ExtensionAPI) {
     return panel;
   });
 
+  // OMP owns the async-result renderer, so mirror new results to our type.
   pi.on("session_start", async (_event, ctx) => {
     const seenEntryIds = new Set<string>();
 
@@ -92,6 +96,7 @@ export default function taskResultPanel(pi: ExtensionAPI) {
   });
 }
 
+/** Returns whether an unseen entry contains a completed subagent result. */
 function isNewTaskResult(
   entry: SessionEntry,
   seenEntryIds: Set<string>,
@@ -106,6 +111,7 @@ function isNewTaskResult(
   );
 }
 
+/** Fields exposed by OMP's task-result envelope. */
 interface TaskResult {
   id: string;
   agent?: string;
@@ -114,11 +120,13 @@ interface TaskResult {
   output: string;
 }
 
+/** Reviewer JSON fields rendered specially when present. */
 interface ReviewFinding {
   title?: unknown;
   body?: unknown;
 }
 
+/** Extracts metadata and output while discarding the XML envelope. */
 function parseTaskResult(content: string): TaskResult | undefined {
   const taskResult = content.match(
     /<task-result\b([^>]*)>([\s\S]*?)<\/task-result>/,
@@ -142,6 +150,7 @@ function parseTaskResult(content: string): TaskResult | undefined {
   };
 }
 
+/** Formats structured findings or falls back to the raw output. */
 function formatOutput(output: string): string[] {
   const findings = parseFindings(output);
   if (!findings) return [output];
@@ -155,6 +164,7 @@ function formatOutput(output: string): string[] {
   });
 }
 
+/** Reads the common reviewer JSON shape without rejecting plain text. */
 function parseFindings(output: string): ReviewFinding[] | undefined {
   try {
     const value = JSON.parse(output) as { findings?: unknown };
