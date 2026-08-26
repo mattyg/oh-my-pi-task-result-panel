@@ -21,4 +21,4 @@ jobs:
       - run: npm ci --ignore-scripts
       - name: Install latest OMP packages
         run: npm install --no-save --ignore-scripts @oh-my-pi/pi-coding-agent@latest @oh-my-pi/pi-tui@latest
-      - run: bun test index.integration.test.ts
+      - run: bun test tests/index.integration.test.ts

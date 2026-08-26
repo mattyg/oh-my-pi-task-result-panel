@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { resolveTaskArtifactPath } from "./task-artifact";
+import { resolveTaskArtifactPath } from "../src/task-artifact";
 
 describe("resolveTaskArtifactPath", () => {
   test("resolves an agent output within its session artifact directory", () => {

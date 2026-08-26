@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { formatTaskResultPanel } from "./task-result";
+import { formatTaskResultPanel } from "../src/task-result";
 
 describe("formatTaskResultPanel", () => {
   test("formats a generic OMP task result without XML", () => {
