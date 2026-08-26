@@ -14,7 +14,7 @@ interface SessionEntry {
   content?: unknown;
 }
 
-/** Registers result watching, panel rendering, and the demo command. */
+/** Registers automatic task-result watching and panel rendering. */
 export default function taskResultPanel(pi: ExtensionAPI) {
   pi.registerMessageRenderer(PANEL_MESSAGE_TYPE, (message, _options, theme) => {
     const content =
@@ -64,28 +64,6 @@ export default function taskResultPanel(pi: ExtensionAPI) {
     }, 500);
   });
 
-  pi.registerCommand("task-result-panel-demo", {
-    description: "Show a sample task result panel",
-    handler: async (_args, ctx) => {
-      pi.sendMessage(
-        {
-          customType: PANEL_MESSAGE_TYPE,
-          content: [
-            "Background job DataMigration has completed.",
-            '<task-result id="DataMigration" agent="task" status="completed">',
-            "<output>",
-            "Migrated 24 records.",
-            "</output>",
-            "</task-result>",
-          ].join("\n"),
-          display: true,
-          attribution: "agent",
-        },
-        { triggerTurn: false },
-      );
-      ctx.ui.notify("Added a sample task result", "info");
-    },
-  });
 }
 
 /** Returns whether an unseen entry contains a completed subagent result. */

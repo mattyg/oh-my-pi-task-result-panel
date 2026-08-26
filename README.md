@@ -10,8 +10,3 @@ Shows results from any OMP `task` run as clean panels in the main transcript ins
 omp plugin install github:mattyg/oh-my-pi-task-result-panel
 ```
 
-Restart OMP, then preview it with:
-
-```text
-/task-result-panel-demo
-```
