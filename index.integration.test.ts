@@ -30,11 +30,23 @@ interface SentMessage {
 }
 
 describe("task result extension", () => {
-  test("mirrors an async task result into a spaced, styled panel", async () => {
+  test("only mirrors results that arrive after session startup", async () => {
     let poll: (() => void) | undefined;
     let render: Renderer | undefined;
     let start: SessionStart | undefined;
     const sent: SentMessage[] = [];
+    const entries: unknown[] = [
+      {
+        id: "historical-entry",
+        type: "custom_message",
+        customType: "async-result",
+        content: [
+          '<task-result id="HistoricalTask" agent="task" status="completed">',
+          "<output>Already displayed before resume.</output>",
+          "</task-result>",
+        ].join("\n"),
+      },
+    ];
 
     taskResultPanel({
       registerMessageRenderer(type: string, callback: Renderer) {
@@ -49,31 +61,32 @@ describe("task result extension", () => {
     } as never);
 
     await start?.({}, {
-      sessionManager: {
-        getBranch: () => [
-          {
-            id: "entry-1",
-            type: "custom_message",
-            customType: "async-result",
-            content: [
-              '<task-result id="Audit" agent="task" status="completed">',
-              "<output>",
-              JSON.stringify({
-                findings: [
-                  { title: "First result", body: "First description." },
-                  { title: "Second result", body: "Second description." },
-                ],
-              }),
-              "</output>",
-              "</task-result>",
-            ].join("\n"),
-          },
-        ],
-      },
+      sessionManager: { getBranch: () => entries },
       // Capture OMP's managed interval so the test drives it synchronously.
       setInterval(callback: () => void) {
         poll = callback;
       },
+    });
+    poll?.();
+
+    expect(sent).toHaveLength(0);
+
+    entries.push({
+      id: "new-entry",
+      type: "custom_message",
+      customType: "async-result",
+      content: [
+        '<task-result id="Audit" agent="task" status="completed">',
+        "<output>",
+        JSON.stringify({
+          findings: [
+            { title: "First result", body: "First description." },
+            { title: "Second result", body: "Second description." },
+          ],
+        }),
+        "</output>",
+        "</task-result>",
+      ].join("\n"),
     });
     poll?.();
 

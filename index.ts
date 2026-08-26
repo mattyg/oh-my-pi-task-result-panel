@@ -57,16 +57,20 @@ export default function taskResultPanel(pi: ExtensionAPI) {
   // OMP owns the async-result renderer, so mirror new results to our type.
   pi.on("session_start", async (_event, ctx) => {
     const seenEntryIds = new Set<string>();
+    const existingEntries = ctx.sessionManager.getBranch() as SessionEntry[];
+    for (const entry of existingEntries) {
+      if (isTaskResultEntry(entry)) seenEntryIds.add(entry.id);
+    }
 
     ctx.setInterval(() => {
       const entries = ctx.sessionManager.getBranch() as SessionEntry[];
       for (const entry of entries) {
         if (!isNewTaskResult(entry, seenEntryIds)) continue;
-        seenEntryIds.add(entry.id!);
+        seenEntryIds.add(entry.id);
         pi.sendMessage(
           {
             customType: PANEL_MESSAGE_TYPE,
-            content: entry.content as string,
+            content: entry.content,
             display: true,
             attribution: "agent",
           },
@@ -78,17 +82,23 @@ export default function taskResultPanel(pi: ExtensionAPI) {
 
 }
 
-/** Returns whether an unseen entry contains a completed subagent result. */
-function isNewTaskResult(
-  entry: SessionEntry,
-  seenEntryIds: Set<string>,
-): boolean {
+type TaskResultEntry = SessionEntry & { id: string; content: string };
+
+/** Returns whether an entry contains a completed subagent result. */
+function isTaskResultEntry(entry: SessionEntry): entry is TaskResultEntry {
   return (
     entry.type === "custom_message" &&
     entry.customType === "async-result" &&
     typeof entry.id === "string" &&
-    !seenEntryIds.has(entry.id) &&
     typeof entry.content === "string" &&
     entry.content.includes(TASK_RESULT_TAG)
   );
+}
+
+/** Returns whether a task result has not been mirrored yet. */
+function isNewTaskResult(
+  entry: SessionEntry,
+  seenEntryIds: Set<string>,
+): entry is TaskResultEntry {
+  return isTaskResultEntry(entry) && !seenEntryIds.has(entry.id);
 }
