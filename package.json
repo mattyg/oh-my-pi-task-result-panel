@@ -1,0 +1,21 @@
+{
+  "name": "oh-my-pi-task-result-panel",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Prominently renders OMP task subagent results in the main transcript.",
+  "keywords": [
+    "omp",
+    "oh-my-pi",
+    "extension"
+  ],
+  "omp": {
+    "extensions": [
+      "./index.ts"
+    ]
+  },
+  "peerDependencies": {
+    "@oh-my-pi/pi-coding-agent": ">=18.0.0",
+    "@oh-my-pi/pi-tui": ">=0.60.0"
+  }
+}
