@@ -1,8 +1,8 @@
 # OMP Task Result Panel
 
-Shows completed OMP reviewer/subagent results as clean panels in the main transcript instead of raw XML.
+Shows results from any OMP `task` run as clean panels in the main transcript instead of raw XML. It is not tied to reviewer agents.
 
-![Reviewer result panel](assets/demo.svg)
+![OMP task result panel](assets/demo.svg)
 
 ## Install
 

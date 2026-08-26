@@ -3,6 +3,9 @@
   "version": "0.1.0",
   "private": true,
   "type": "module",
+  "scripts": {
+    "test": "bun test"
+  },
   "description": "Prominently renders OMP task subagent results in the main transcript.",
   "keywords": [
     "omp",

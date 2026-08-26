@@ -4,10 +4,10 @@
   <circle cx="48" cy="25" r="6" fill="#febc2e"/>
   <circle cx="68" cy="25" r="6" fill="#28c840"/>
   <g font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="19">
-    <text x="28" y="72" fill="#7dd3fc">━━━ Reviewer result · StandardsReview ━━━</text>
-    <text x="28" y="106" fill="#94a3b8">reviewer · completed · 3m7s</text>
-    <text x="28" y="150" fill="#e2e8f0">• Use shared visual tokens for the heading layer</text>
-    <text x="28" y="184" fill="#cbd5e1">Replace hard-coded colors with the existing PikaTheme tokens.</text>
+    <text x="28" y="72" fill="#7dd3fc">━━━ Task result · DataMigration ━━━</text>
+    <text x="28" y="106" fill="#94a3b8">task · completed · 42s</text>
+    <text x="28" y="150" fill="#e2e8f0">Migrated 24 records.</text>
+    <text x="28" y="184" fill="#cbd5e1">Validation completed successfully.</text>
     <text x="28" y="230" fill="#7dd3fc">━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━</text>
   </g>
 </svg>

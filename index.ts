@@ -1,6 +1,7 @@
-/** Renders completed OMP reviewer tasks as readable transcript panels. */
+/** Renders completed OMP tasks as readable transcript panels. */
 import type { ExtensionAPI } from "@oh-my-pi/pi-coding-agent";
 import { Container, Text } from "@oh-my-pi/pi-tui";
+import { formatTaskResultPanel } from "./task-result";
 
 const TASK_RESULT_TAG = "<task-result";
 const PANEL_MESSAGE_TYPE = "task-result-panel";
@@ -18,30 +19,21 @@ export default function taskResultPanel(pi: ExtensionAPI) {
   pi.registerMessageRenderer(PANEL_MESSAGE_TYPE, (message, _options, theme) => {
     const content =
       typeof message.content === "string" ? message.content : "";
-    const result = parseTaskResult(content);
+    const result = formatTaskResultPanel(content);
     if (!result) return;
 
     const panel = new Container();
     panel.addChild(
       new Text(
-        theme.fg("accent", `━━━ Reviewer result · ${result.id} ━━━`),
+        theme.fg("accent", `━━━ Task result · ${result.id} ━━━`),
         1,
         0,
       ),
     );
     panel.addChild(
-      new Text(
-        theme.fg(
-          "dim",
-          [result.agent, result.status, result.duration]
-            .filter(Boolean)
-            .join(" · "),
-        ),
-        1,
-        0,
-      ),
+      new Text(theme.fg("dim", result.metadata.join(" · ")), 1, 0),
     );
-    for (const section of formatOutput(result.output)) {
+    for (const section of result.lines) {
       panel.addChild(new Text(section, 1, 0));
     }
     panel.addChild(
@@ -73,16 +65,16 @@ export default function taskResultPanel(pi: ExtensionAPI) {
   });
 
   pi.registerCommand("task-result-panel-demo", {
-    description: "Show a sample reviewer result panel",
+    description: "Show a sample task result panel",
     handler: async (_args, ctx) => {
       pi.sendMessage(
         {
           customType: PANEL_MESSAGE_TYPE,
           content: [
-            "Background job DemoReview has completed.",
-            '<task-result id="DemoReview" agent="reviewer" status="completed">',
+            "Background job DataMigration has completed.",
+            '<task-result id="DataMigration" agent="task" status="completed">',
             "<output>",
-            "No findings. The task-result panel is working.",
+            "Migrated 24 records.",
             "</output>",
             "</task-result>",
           ].join("\n"),
@@ -91,7 +83,7 @@ export default function taskResultPanel(pi: ExtensionAPI) {
         },
         { triggerTurn: false },
       );
-      ctx.ui.notify("Added a sample reviewer result", "info");
+      ctx.ui.notify("Added a sample task result", "info");
     },
   });
 }
@@ -109,67 +101,4 @@ function isNewTaskResult(
     typeof entry.content === "string" &&
     entry.content.includes(TASK_RESULT_TAG)
   );
-}
-
-/** Fields exposed by OMP's task-result envelope. */
-interface TaskResult {
-  id: string;
-  agent?: string;
-  status?: string;
-  duration?: string;
-  output: string;
-}
-
-/** Reviewer JSON fields rendered specially when present. */
-interface ReviewFinding {
-  title?: unknown;
-  body?: unknown;
-}
-
-/** Extracts metadata and output while discarding the XML envelope. */
-function parseTaskResult(content: string): TaskResult | undefined {
-  const taskResult = content.match(
-    /<task-result\b([^>]*)>([\s\S]*?)<\/task-result>/,
-  );
-  if (!taskResult) return;
-
-  const attributes = Object.fromEntries(
-    [...taskResult[1].matchAll(/([\w-]+)="([^"]*)"/g)].map((match) => [
-      match[1],
-      match[2],
-    ]),
-  );
-  const output = taskResult[2].match(/<output>\s*([\s\S]*?)\s*<\/output>/);
-
-  return {
-    id: attributes.id ?? "unknown",
-    agent: attributes.agent,
-    status: attributes.status,
-    duration: attributes.duration,
-    output: output?.[1].trim() ?? taskResult[2].trim(),
-  };
-}
-
-/** Formats structured findings or falls back to the raw output. */
-function formatOutput(output: string): string[] {
-  const findings = parseFindings(output);
-  if (!findings) return [output];
-  if (findings.length === 0) return ["No findings."];
-
-  return findings.flatMap((finding) => {
-    const title =
-      typeof finding.title === "string" ? `• ${finding.title}` : "• Finding";
-    const body = typeof finding.body === "string" ? finding.body : "";
-    return body ? [title, body] : [title];
-  });
-}
-
-/** Reads the common reviewer JSON shape without rejecting plain text. */
-function parseFindings(output: string): ReviewFinding[] | undefined {
-  try {
-    const value = JSON.parse(output) as { findings?: unknown };
-    return Array.isArray(value.findings) ? value.findings : undefined;
-  } catch {
-    return;
-  }
 }
