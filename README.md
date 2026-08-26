@@ -4,7 +4,13 @@ Displays results from any OMP `task` run as clean panels in the main transcript.
 
 ![OMP task result panel](assets/demo.svg)
 
-Large results show a preview. Open the full output with `/task-results-view <task-id>`; omit the id to open the latest result.
+Small results are shown inline. Large results stay as compact previews; open the complete artifact in OMP's focused multiline viewer with:
+
+```text
+/task-results-view <task-id>
+```
+
+Omit `<task-id>` to open the latest large result. Full output remains available after restarting OMP.
 
 ## Install
 
